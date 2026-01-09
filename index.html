@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>generador de facturas</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>generador de facturas</h1>
+      <p>crea y descarga facturas en <strong>PDF</strong> de forma sencilla.</p>
+    </div>
+
+    <div class="form-section">
+      <!-- Bloque 1: Datos del emisor -->
+      <div class="form-card">
+        <h3>datos del emisor</h3>
+        <div class="form-grid">
+          <div class="field full-width">
+            <label for="emisorNombre">nombre</label>
+            <input id="emisorNombre" type="text" placeholder="Tu nombre o empresa" />
+          </div>
+          <div class="field full-width">
+            <label for="emisorDireccion1">dirección 1</label>
+            <input id="emisorDireccion1" type="text" placeholder="Calle, número, piso" />
+          </div>
+          <div class="field full-width">
+            <label for="emisorDireccion2">dirección 2</label>
+            <input id="emisorDireccion2" type="text" placeholder="Código postal, ciudad" />
+          </div>
+          <div class="field full-width">
+            <label for="emisorNIF">N.I.F.</label>
+            <input id="emisorNIF" type="text" placeholder="12345678A" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Bloque 2: Datos del cliente -->
+      <div class="form-card">
+        <h3>datos del cliente</h3>
+        <div class="form-grid">
+          <div class="field full-width">
+            <label for="clienteNombre">nombre</label>
+            <input id="clienteNombre" type="text" placeholder="Nombre del cliente" />
+          </div>
+          <div class="field full-width">
+            <label for="clienteDireccion1">dirección 1</label>
+            <input id="clienteDireccion1" type="text" placeholder="Calle, número, piso" />
+          </div>
+          <div class="field full-width">
+            <label for="clienteDireccion2">dirección 2</label>
+            <input id="clienteDireccion2" type="text" placeholder="Código postal, ciudad" />
+          </div>
+          <div class="field full-width">
+            <label for="clienteNIF">N.I.F.</label>
+            <input id="clienteNIF" type="text" placeholder="12345678A" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Bloque 3: Datos de la factura -->
+      <div class="form-card">
+        <h3>datos de la factura</h3>
+        <div class="form-grid">
+          <div class="field">
+            <label for="facturaNumero">número de factura</label>
+            <input id="facturaNumero" type="number" step="1" min="1" value="1" />
+          </div>
+          <div class="field">
+            <label for="facturaAnio">año</label>
+            <input id="facturaAnio" type="text" readonly />
+          </div>
+          <div class="field full-width">
+            <label for="facturaFecha">fecha</label>
+            <input id="facturaFecha" type="date" />
+          </div>
+          <div class="field full-width">
+            <label for="facturaAsunto">asunto / concepto</label>
+            <input id="facturaAsunto" type="text" placeholder="Diseño y programación web" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Bloque 4: Cálculos -->
+      <div class="form-card">
+        <h3>cálculos</h3>
+        <div class="form-grid">
+          <div class="field full-width">
+            <label for="baseImponible">base imponible (€)</label>
+            <input id="baseImponible" type="number" inputmode="decimal" step="0.01" min="0" value="425" />
+          </div>
+          <div class="field">
+            <label for="ivaRate">IVA (%)</label>
+            <input id="ivaRate" type="number" step="1" min="0" value="21" />
+          </div>
+          <div class="field irpf-field">
+            <label for="irpfCheck">
+              <input id="irpfCheck" type="checkbox" />
+              retención IRPF
+            </label>
+            <input id="irpfRate" type="number" step="1" min="0" value="15" disabled />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Previsualización -->
+    <div class="preview-section">
+      <h3>previsualización</h3>
+      <div class="invoice-preview" id="invoicePreview">
+        <div class="invoice-header-section">
+          <div class="invoice-block">
+            <div class="invoice-name" id="prevEmisorNombre">—</div>
+            <div id="prevEmisorDireccion1">—</div>
+            <div id="prevEmisorDireccion2">—</div>
+            <div id="prevEmisorNIF">—</div>
+          </div>
+          <div class="invoice-meta">
+            <div><strong>N.º factura:</strong> <span id="prevFacturaNum">—</span></div>
+            <div><strong>Fecha:</strong> <span id="prevFacturaFecha">—</span></div>
+          </div>
+        </div>
+
+        <div class="invoice-block">
+          <div class="invoice-name" id="prevClienteNombre">—</div>
+          <div id="prevClienteDireccion1">—</div>
+          <div id="prevClienteDireccion2">—</div>
+          <div id="prevClienteNIF">—</div>
+        </div>
+
+        <div class="invoice-concept">
+          <div id="prevFacturaAsunto">—</div>
+        </div>
+
+        <div class="invoice-totals">
+          <div class="invoice-row">
+            <span>Subtotal</span>
+            <strong id="prevSubtotal">—</strong>
+          </div>
+          <div class="invoice-row" id="prevIrpfRow">
+            <span>I.R.P.F.</span>
+            <strong id="prevIrpf">—</strong>
+          </div>
+          <div class="invoice-row">
+            <span>I.V.A.</span>
+            <strong id="prevIva">—</strong>
+          </div>
+          <div class="invoice-row total-row">
+            <span>TOTAL</span>
+            <strong id="prevTotal">—</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="downloadBtn" class="btn-primary">descargar PDF</button>
+      </div>
+    </div>
+
+    <div class="branding-badge">
+      <a href="https://meowrhino.studio" target="_blank" rel="noopener noreferrer">meowrhino.studio</a>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
