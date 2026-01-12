@@ -44,6 +44,19 @@ body {
   margin: 0 0 1.25rem;
 }
 
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .header h1 { 
   font-size: 1.35rem; 
   letter-spacing: 0.2px; 
@@ -57,7 +70,7 @@ body {
 
 .form-section {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(2, minmax(300px, 1fr));
   gap: 1rem;
   margin-bottom: 1.5rem;
 }
@@ -73,7 +86,7 @@ body {
 .form-card h3 {
   font-size: 1rem;
   margin-bottom: 1rem;
-  color: var(--text);
+  color: var(--primary);
 }
 
 .form-grid {
@@ -101,6 +114,16 @@ label {
 label input[type="checkbox"] {
   margin-right: 0.5rem;
   cursor: pointer;
+}
+
+.check-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.check-label input[type="checkbox"] {
+  margin-right: 0;
 }
 
 input[type="text"],
@@ -189,6 +212,16 @@ input[readonly] {
   margin-bottom: 0.25rem;
 }
 
+.invoice-tag {
+  display: none;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
 .invoice-concept {
   border: 2px solid var(--border);
   padding: 2rem;
@@ -231,10 +264,39 @@ input[readonly] {
   font-weight: 700;
 }
 
+.invoice-notes {
+  margin-top: 0.75rem;
+}
+
+.invoice-note {
+  display: none;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
 .actions {
   display: flex;
   justify-content: center;
   margin-top: 1rem;
+}
+
+.btn-secondary {
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  background: white;
+  color: var(--text);
+}
+
+.btn-secondary:hover {
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .btn-primary {
@@ -274,10 +336,23 @@ input[readonly] {
   color: var(--primary-dark); 
 }
 
+.iva-exception-field {
+  display: none;
+}
+
+.iva-exception-field input {
+  font-size: 0.85rem;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   body { 
     padding: 1rem 0.75rem; 
+  }
+
+  .header-row {
+    flex-direction: column;
+    align-items: flex-start;
   }
   
   .form-section {

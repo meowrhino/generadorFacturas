@@ -9,76 +9,71 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>generador de facturas</h1>
-      <p>crea y descarga facturas en <strong>PDF</strong> de forma sencilla.</p>
+      <div class="header-row">
+        <div class="header-copy">
+          <h1>generador de facturas</h1>
+          <p>crea y descarga facturas en <strong>PDF</strong> de forma sencilla.</p>
+        </div>
+        <div class="header-actions">
+          <input id="jsonFileInput" type="file" accept="application/json" hidden />
+          <button id="loadJsonBtn" class="btn-secondary" type="button">cargar JSON</button>
+        </div>
+      </div>
     </div>
 
     <div class="form-section">
       <!-- Bloque 1: Datos del emisor -->
       <div class="form-card">
-        <h3>datos del emisor</h3>
+        <h3>emisor</h3>
         <div class="form-grid">
           <div class="field full-width">
-            <label for="emisorNombre">nombre</label>
-            <input id="emisorNombre" type="text" placeholder="Tu nombre o empresa" />
+            <input id="emisorNombre" type="text" placeholder="nombre" aria-label="nombre" />
           </div>
           <div class="field full-width">
-            <label for="emisorDireccion1">dirección 1</label>
-            <input id="emisorDireccion1" type="text" placeholder="Calle, número, piso" />
+            <input id="emisorDireccion1" type="text" placeholder="dirección 1" aria-label="dirección 1" />
           </div>
           <div class="field full-width">
-            <label for="emisorDireccion2">dirección 2</label>
-            <input id="emisorDireccion2" type="text" placeholder="Código postal, ciudad" />
+            <input id="emisorDireccion2" type="text" placeholder="dirección 2" aria-label="dirección 2" />
           </div>
           <div class="field full-width">
-            <label for="emisorNIF">N.I.F.</label>
-            <input id="emisorNIF" type="text" placeholder="12345678A" />
+            <input id="emisorNIF" type="text" placeholder="N.I.F." aria-label="N.I.F." />
           </div>
         </div>
       </div>
 
       <!-- Bloque 2: Datos del cliente -->
       <div class="form-card">
-        <h3>datos del cliente</h3>
+        <h3>cliente</h3>
         <div class="form-grid">
           <div class="field full-width">
-            <label for="clienteNombre">nombre</label>
-            <input id="clienteNombre" type="text" placeholder="Nombre del cliente" />
+            <input id="clienteNombre" type="text" placeholder="nombre" aria-label="nombre" />
           </div>
           <div class="field full-width">
-            <label for="clienteDireccion1">dirección 1</label>
-            <input id="clienteDireccion1" type="text" placeholder="Calle, número, piso" />
+            <input id="clienteDireccion1" type="text" placeholder="dirección 1" aria-label="dirección 1" />
           </div>
           <div class="field full-width">
-            <label for="clienteDireccion2">dirección 2</label>
-            <input id="clienteDireccion2" type="text" placeholder="Código postal, ciudad" />
+            <input id="clienteDireccion2" type="text" placeholder="dirección 2" aria-label="dirección 2" />
           </div>
           <div class="field full-width">
-            <label for="clienteNIF">N.I.F.</label>
-            <input id="clienteNIF" type="text" placeholder="12345678A" />
+            <input id="clienteNIF" type="text" placeholder="N.I.F." aria-label="N.I.F." />
           </div>
         </div>
       </div>
 
       <!-- Bloque 3: Datos de la factura -->
       <div class="form-card">
-        <h3>datos de la factura</h3>
+        <h3>factura</h3>
         <div class="form-grid">
           <div class="field">
             <label for="facturaNumero">número de factura</label>
             <input id="facturaNumero" type="number" step="1" min="1" value="1" />
           </div>
           <div class="field">
-            <label for="facturaAnio">año</label>
-            <input id="facturaAnio" type="text" readonly />
-          </div>
-          <div class="field full-width">
             <label for="facturaFecha">fecha</label>
             <input id="facturaFecha" type="date" />
           </div>
           <div class="field full-width">
-            <label for="facturaAsunto">asunto / concepto</label>
-            <input id="facturaAsunto" type="text" placeholder="Diseño y programación web" />
+            <input id="facturaAsunto" type="text" placeholder="asunto / concepto" aria-label="asunto / concepto" />
           </div>
         </div>
       </div>
@@ -92,15 +87,27 @@
             <input id="baseImponible" type="number" inputmode="decimal" step="0.01" min="0" value="425" />
           </div>
           <div class="field">
-            <label for="ivaRate">IVA (%)</label>
+            <label class="check-label" for="ivaCheck">
+              <input id="ivaCheck" type="checkbox" checked />
+              IVA
+            </label>
             <input id="ivaRate" type="number" step="1" min="0" value="21" />
           </div>
           <div class="field irpf-field">
-            <label for="irpfCheck">
+            <label class="check-label" for="irpfCheck">
               <input id="irpfCheck" type="checkbox" />
               retención IRPF
             </label>
             <input id="irpfRate" type="number" step="1" min="0" value="15" disabled />
+          </div>
+          <div class="field full-width iva-exception-field" id="ivaExceptionField">
+            <input id="ivaException" type="text" placeholder="causa excepción iva" aria-label="causa excepción iva" />
+          </div>
+          <div class="field full-width">
+            <label class="check-label" for="inversaCheck">
+              <input id="inversaCheck" type="checkbox" />
+              factura inversa
+            </label>
           </div>
         </div>
       </div>
@@ -120,6 +127,7 @@
           <div class="invoice-meta">
             <div><strong>N.º factura:</strong> <span id="prevFacturaNum">—</span></div>
             <div><strong>Fecha:</strong> <span id="prevFacturaFecha">—</span></div>
+            <div class="invoice-tag" id="prevInversaTag">factura inversa</div>
           </div>
         </div>
 
@@ -144,7 +152,7 @@
             <strong id="prevIrpf">—</strong>
           </div>
           <div class="invoice-row">
-            <span>I.V.A.</span>
+            <span id="prevIvaLabel">I.V.A.</span>
             <strong id="prevIva">—</strong>
           </div>
           <div class="invoice-row total-row">
@@ -152,10 +160,13 @@
             <strong id="prevTotal">—</strong>
           </div>
         </div>
+        <div class="invoice-notes">
+          <div class="invoice-note" id="prevIvaException"></div>
+        </div>
       </div>
 
       <div class="actions">
-        <button id="downloadBtn" class="btn-primary">descargar PDF</button>
+        <button id="downloadBtn" class="btn-primary">descargar</button>
       </div>
     </div>
 

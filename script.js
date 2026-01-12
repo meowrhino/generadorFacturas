@@ -22,15 +22,18 @@
     
     // Factura
     facturaNumero: $('facturaNumero'),
-    facturaAnio: $('facturaAnio'),
     facturaFecha: $('facturaFecha'),
     facturaAsunto: $('facturaAsunto'),
     
     // Cálculos
     baseImponible: $('baseImponible'),
+    ivaCheck: $('ivaCheck'),
     ivaRate: $('ivaRate'),
+    ivaException: $('ivaException'),
+    ivaExceptionField: $('ivaExceptionField'),
     irpfCheck: $('irpfCheck'),
     irpfRate: $('irpfRate'),
+    inversaCheck: $('inversaCheck'),
     
     // Preview
     prevEmisorNombre: $('prevEmisorNombre'),
@@ -50,10 +53,15 @@
     prevSubtotal: $('prevSubtotal'),
     prevIrpf: $('prevIrpf'),
     prevIva: $('prevIva'),
+    prevIvaLabel: $('prevIvaLabel'),
     prevTotal: $('prevTotal'),
     prevIrpfRow: $('prevIrpfRow'),
+    prevIvaException: $('prevIvaException'),
+    prevInversaTag: $('prevInversaTag'),
     
     downloadBtn: $('downloadBtn'),
+    loadJsonBtn: $('loadJsonBtn'),
+    jsonFileInput: $('jsonFileInput'),
   };
 
   // Utilidades
@@ -64,15 +72,32 @@
 
   const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
 
-  // Inicializar fecha y año
+  const getDateParts = (value) => {
+    if (!value) return null;
+    const [y, m, d] = value.split('-');
+    if (!y || !m || !d) return null;
+    return { y, m, d };
+  };
+
+  const getYearShort = (value) => {
+    const parts = getDateParts(value);
+    return parts ? parts.y.slice(-2) : '';
+  };
+
+  const getYearShortForFile = (value) => {
+    const year = getYearShort(value);
+    if (year) return year;
+    return String(new Date().getFullYear()).slice(-2);
+  };
+
+  const formatDate = (value) => {
+    const parts = getDateParts(value);
+    return parts ? `${parts.d}/${parts.m}/${parts.y}` : '—';
+  };
+
+  // Inicializar fecha
   function initDateFields() {
     const today = new Date();
-    const year = today.getFullYear();
-    const yearShort = String(year).slice(-2);
-    
-    // Establecer año (2 últimos dígitos)
-    els.facturaAnio.value = yearShort;
-    
     // Establecer fecha actual
     const yyyy = today.getFullYear();
     const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -96,22 +121,20 @@
     
     // Factura
     const facturaNum = els.facturaNumero.value || '—';
-    const facturaAnio = els.facturaAnio.value || '—';
-    els.prevFacturaNum.textContent = `${facturaNum}/${facturaAnio}`;
-    
     const fechaValue = els.facturaFecha.value;
-    if (fechaValue) {
-      const [y, m, d] = fechaValue.split('-');
-      els.prevFacturaFecha.textContent = `${d}/${m}/${y}`;
-    } else {
-      els.prevFacturaFecha.textContent = '—';
-    }
+    const facturaAnio = getYearShort(fechaValue);
+    els.prevFacturaNum.textContent = facturaAnio ? `${facturaNum}/${facturaAnio}` : `${facturaNum}/—`;
+    els.prevFacturaFecha.textContent = formatDate(fechaValue);
     
     els.prevFacturaAsunto.textContent = els.facturaAsunto.value || '—';
     
     // Cálculos
-    const base = Math.max(0, toNum(els.baseImponible.value));
-    const ivaRate = Math.max(0, Math.floor(toNum(els.ivaRate.value))) / 100;
+    const baseInput = Math.max(0, toNum(els.baseImponible.value));
+    const inversa = els.inversaCheck.checked;
+    const base = inversa ? -baseInput : baseInput;
+    const ivaEnabled = els.ivaCheck.checked;
+    const ivaRateValue = Math.max(0, Math.floor(toNum(els.ivaRate.value))) / 100;
+    const ivaRate = ivaEnabled ? ivaRateValue : 0;
     const irpfEnabled = els.irpfCheck.checked;
     const irpfRate = irpfEnabled ? Math.max(0, Math.floor(toNum(els.irpfRate.value))) / 100 : 0;
     
@@ -123,12 +146,29 @@
     els.prevIva.textContent = fmt.format(iva);
     els.prevTotal.textContent = fmt.format(total);
     
-    if (irpfEnabled && irpf > 0) {
-      els.prevIrpfRow.style.display = 'block';
-      els.prevIrpf.textContent = '− ' + fmt.format(irpf);
+    if (irpfEnabled && Math.abs(irpf) > 0) {
+      els.prevIrpfRow.style.display = 'grid';
+      els.prevIrpf.textContent = '− ' + fmt.format(Math.abs(irpf));
     } else {
       els.prevIrpfRow.style.display = 'none';
       els.prevIrpf.textContent = fmt.format(0);
+    }
+
+    els.prevIvaLabel.textContent = ivaEnabled ? 'I.V.A.' : 'I.V.A. (exento)';
+
+    const ivaExceptionText = els.ivaException.value.trim();
+    if (!ivaEnabled && ivaExceptionText) {
+      els.prevIvaException.style.display = 'block';
+      els.prevIvaException.textContent = ivaExceptionText;
+    } else {
+      els.prevIvaException.style.display = 'none';
+      els.prevIvaException.textContent = '';
+    }
+
+    if (inversa) {
+      els.prevInversaTag.style.display = 'block';
+    } else {
+      els.prevInversaTag.style.display = 'none';
     }
   }
 
@@ -138,10 +178,95 @@
     updatePreview();
   }
 
+  function toggleIva() {
+    const ivaEnabled = els.ivaCheck.checked;
+    els.ivaRate.disabled = !ivaEnabled;
+    els.ivaExceptionField.style.display = ivaEnabled ? 'none' : 'flex';
+    updatePreview();
+  }
+
+  function buildInvoiceData() {
+    return {
+      version: 1,
+      emisor: {
+        nombre: els.emisorNombre.value || '',
+        direccion1: els.emisorDireccion1.value || '',
+        direccion2: els.emisorDireccion2.value || '',
+        nif: els.emisorNIF.value || '',
+      },
+      cliente: {
+        nombre: els.clienteNombre.value || '',
+        direccion1: els.clienteDireccion1.value || '',
+        direccion2: els.clienteDireccion2.value || '',
+        nif: els.clienteNIF.value || '',
+      },
+      factura: {
+        numero: els.facturaNumero.value || '',
+        fecha: els.facturaFecha.value || '',
+        asunto: els.facturaAsunto.value || '',
+      },
+      calculos: {
+        base: toNum(els.baseImponible.value),
+        ivaRate: toNum(els.ivaRate.value),
+        ivaEnabled: els.ivaCheck.checked,
+        ivaException: els.ivaException.value || '',
+        irpfEnabled: els.irpfCheck.checked,
+        irpfRate: toNum(els.irpfRate.value),
+        inversa: els.inversaCheck.checked,
+      },
+    };
+  }
+
+  function applyInvoiceData(data) {
+    if (!data || typeof data !== 'object') return;
+    const { emisor = {}, cliente = {}, factura = {}, calculos = {} } = data;
+
+    if (typeof emisor.nombre === 'string') els.emisorNombre.value = emisor.nombre;
+    if (typeof emisor.direccion1 === 'string') els.emisorDireccion1.value = emisor.direccion1;
+    if (typeof emisor.direccion2 === 'string') els.emisorDireccion2.value = emisor.direccion2;
+    if (typeof emisor.nif === 'string') els.emisorNIF.value = emisor.nif;
+
+    if (typeof cliente.nombre === 'string') els.clienteNombre.value = cliente.nombre;
+    if (typeof cliente.direccion1 === 'string') els.clienteDireccion1.value = cliente.direccion1;
+    if (typeof cliente.direccion2 === 'string') els.clienteDireccion2.value = cliente.direccion2;
+    if (typeof cliente.nif === 'string') els.clienteNIF.value = cliente.nif;
+
+    if (typeof factura.numero !== 'undefined') els.facturaNumero.value = factura.numero;
+    if (typeof factura.fecha === 'string') els.facturaFecha.value = factura.fecha;
+    if (typeof factura.asunto === 'string') els.facturaAsunto.value = factura.asunto;
+
+    if (typeof calculos.base !== 'undefined') els.baseImponible.value = calculos.base;
+    if (typeof calculos.ivaRate !== 'undefined') els.ivaRate.value = calculos.ivaRate;
+    if (typeof calculos.ivaEnabled !== 'undefined') els.ivaCheck.checked = !!calculos.ivaEnabled;
+    if (typeof calculos.ivaException === 'string') els.ivaException.value = calculos.ivaException;
+    if (typeof calculos.irpfEnabled !== 'undefined') els.irpfCheck.checked = !!calculos.irpfEnabled;
+    if (typeof calculos.irpfRate !== 'undefined') els.irpfRate.value = calculos.irpfRate;
+    if (typeof calculos.inversa !== 'undefined') els.inversaCheck.checked = !!calculos.inversa;
+
+    toggleIva();
+    toggleIrpf();
+    updatePreview();
+  }
+
+  function downloadJSON() {
+    const data = buildInvoiceData();
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const facturaNum = els.facturaNumero.value || 'sin_numero';
+    const yearShort = getYearShortForFile(els.facturaFecha.value);
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `factura_${facturaNum}_${yearShort}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+  }
+
   // Generar PDF
   function generatePDF() {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     
     // Datos
     const emisorNombre = els.emisorNombre.value || '';
@@ -154,82 +279,138 @@
     const clienteDir2 = els.clienteDireccion2.value || '';
     const clienteNIF = els.clienteNIF.value || '';
     
-    const facturaNum = els.facturaNumero.value || '1';
-    const facturaAnio = els.facturaAnio.value || '26';
+    const facturaNumValue = els.facturaNumero.value || '—';
+    const facturaNumFile = els.facturaNumero.value || 'sin_numero';
     const fechaValue = els.facturaFecha.value;
-    let fechaFormateada = '';
-    if (fechaValue) {
-      const [y, m, d] = fechaValue.split('-');
-      fechaFormateada = `${d}/${m}/${y}`;
-    }
+    const facturaAnio = getYearShort(fechaValue) || '—';
+    const facturaAnioFile = getYearShortForFile(fechaValue);
+    const fechaFormateada = formatDate(fechaValue);
     const asunto = els.facturaAsunto.value || '';
     
-    const base = Math.max(0, toNum(els.baseImponible.value));
-    const ivaRate = Math.max(0, Math.floor(toNum(els.ivaRate.value))) / 100;
+    const baseInput = Math.max(0, toNum(els.baseImponible.value));
+    const inversa = els.inversaCheck.checked;
+    const base = inversa ? -baseInput : baseInput;
+    const ivaEnabled = els.ivaCheck.checked;
+    const ivaRateValue = Math.max(0, Math.floor(toNum(els.ivaRate.value))) / 100;
+    const ivaRate = ivaEnabled ? ivaRateValue : 0;
     const irpfEnabled = els.irpfCheck.checked;
     const irpfRate = irpfEnabled ? Math.max(0, Math.floor(toNum(els.irpfRate.value))) / 100 : 0;
     
     const iva = round2(base * ivaRate);
     const irpf = round2(base * irpfRate);
     const total = round2(base + iva - irpf);
+    const ivaExceptionText = els.ivaException.value.trim();
     
-    // Configuración del PDF
-    let y = 20;
-    
-    // Emisor (bloque con borde)
-    doc.setFontSize(10);
-    doc.rect(20, y, 100, 30);
-    doc.text(emisorNombre, 22, y + 5);
-    doc.text(emisorDir1, 22, y + 10);
-    doc.text(emisorDir2, 22, y + 15);
-    doc.text(`N.I.F.: ${emisorNIF}`, 22, y + 20);
-    
-    // Número y fecha (derecha)
-    doc.text(`N.º factura: ${facturaNum}/${facturaAnio}`, 140, y + 5);
-    doc.text(`Fecha: ${fechaFormateada}`, 140, y + 10);
-    
-    y += 40;
-    
-    // Cliente (bloque con borde)
-    doc.rect(20, y, 100, 30);
-    doc.text(clienteNombre, 22, y + 5);
-    doc.text(clienteDir1, 22, y + 10);
-    doc.text(clienteDir2, 22, y + 15);
-    doc.text(`N.I.F.: ${clienteNIF}`, 22, y + 20);
-    
-    y += 40;
-    
-    // Asunto (bloque con borde)
-    doc.rect(20, y, 170, 40);
-    doc.text(asunto, 105, y + 20, { align: 'center' });
-    
-    y += 50;
-    
-    // Cálculos (tabla alineada a la derecha)
-    const xLabel = 130;
-    const xValue = 180;
-    
-    doc.text('Subtotal', xLabel, y);
-    doc.text(fmt.format(base), xValue, y, { align: 'right' });
-    y += 7;
-    
-    if (irpfEnabled && irpf > 0) {
-      doc.text('I.R.P.F.', xLabel, y);
-      doc.text('− ' + fmt.format(irpf), xValue, y, { align: 'right' });
-      y += 7;
-    }
-    
-    doc.text('I.V.A.', xLabel, y);
-    doc.text(fmt.format(iva), xValue, y, { align: 'right' });
-    y += 10;
-    
-    doc.setFontSize(12);
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 20;
+    const leftX = margin;
+    const rightX = pageWidth / 2 + 5;
+    let y = margin;
+
+    doc.setFontSize(16);
     doc.setFont(undefined, 'bold');
-    doc.text('TOTAL', xLabel, y);
-    doc.text(fmt.format(total), xValue, y, { align: 'right' });
+    doc.text('Factura', leftX, y);
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    y += 8;
+
+    if (inversa) {
+      doc.text('Tipo: factura inversa', leftX, y);
+      y += 6;
+    }
+
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'bold');
+    doc.text('Emisor', leftX, y);
+    doc.text('Datos de factura', rightX, y);
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    y += 5;
+
+    doc.text(`Nombre: ${emisorNombre}`, leftX, y);
+    doc.text(`N.º: ${facturaNumValue}/${facturaAnio}`, rightX, y);
+    y += 5;
+    doc.text(`Dirección: ${emisorDir1}`, leftX, y);
+    doc.text(`Fecha: ${fechaFormateada}`, rightX, y);
+    y += 5;
+    doc.text(`Dirección 2: ${emisorDir2}`, leftX, y);
+    y += 5;
+    doc.text(`N.I.F.: ${emisorNIF}`, leftX, y);
+    y += 8;
+
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'bold');
+    doc.text('Cliente', leftX, y);
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    y += 5;
+    doc.text(`Nombre: ${clienteNombre}`, leftX, y);
+    y += 5;
+    doc.text(`Dirección: ${clienteDir1}`, leftX, y);
+    y += 5;
+    doc.text(`Dirección 2: ${clienteDir2}`, leftX, y);
+    y += 5;
+    doc.text(`N.I.F.: ${clienteNIF}`, leftX, y);
+    y += 8;
+
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'bold');
+    doc.text('Concepto', leftX, y);
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    y += 5;
+
+    const concepto = asunto || '—';
+    const conceptoLines = doc.splitTextToSize(concepto, pageWidth - margin * 2);
+    doc.text(conceptoLines, leftX, y);
+    y += conceptoLines.length * 5 + 6;
+
+    const totals = [
+      { label: 'Base imponible', value: fmt.format(base) },
+    ];
+    if (irpfEnabled && Math.abs(irpf) > 0) {
+      totals.push({ label: 'Retención IRPF', value: '− ' + fmt.format(Math.abs(irpf)) });
+    }
+    totals.push({ label: ivaEnabled ? 'IVA' : 'IVA (exento)', value: fmt.format(iva) });
+    totals.push({ label: 'Total', value: fmt.format(total), bold: true });
+
+    const noteLines = (!ivaEnabled && ivaExceptionText)
+      ? doc.splitTextToSize(ivaExceptionText, 70)
+      : [];
+    const noteHeight = noteLines.length ? noteLines.length * 4 + 2 : 0;
+    const lineHeight = 6;
+    const totalsHeight = totals.length * lineHeight;
+    let totalsY = pageHeight - margin - totalsHeight - noteHeight;
+    if (totalsY < y + 4) {
+      totalsY = y + 4;
+    }
+
+    const labelX = pageWidth - margin - 70;
+    const valueX = pageWidth - margin;
+
+    if (noteLines.length) {
+      doc.setFontSize(8);
+      doc.setFont(undefined, 'normal');
+      doc.text(noteLines, labelX, totalsY);
+      totalsY += noteLines.length * 4 + 2;
+    }
+
+    totals.forEach((row) => {
+      if (row.bold) {
+        doc.setFontSize(12);
+        doc.setFont(undefined, 'bold');
+      } else {
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'normal');
+      }
+      doc.text(row.label, labelX, totalsY);
+      doc.text(row.value, valueX, totalsY, { align: 'right' });
+      totalsY += lineHeight;
+    });
     
     // Descargar
-    doc.save(`factura_${facturaNum}_${facturaAnio}.pdf`);
+    doc.save(`factura_${facturaNumFile}_${facturaAnioFile}.pdf`);
   }
 
   // Inicializar eventos
@@ -241,7 +422,7 @@
       els.emisorNombre, els.emisorDireccion1, els.emisorDireccion2, els.emisorNIF,
       els.clienteNombre, els.clienteDireccion1, els.clienteDireccion2, els.clienteNIF,
       els.facturaNumero, els.facturaFecha, els.facturaAsunto,
-      els.baseImponible, els.ivaRate, els.irpfRate,
+      els.baseImponible, els.ivaRate, els.ivaException, els.irpfRate,
     ];
     
     allInputs.forEach(input => {
@@ -249,12 +430,38 @@
       input.addEventListener('change', updatePreview);
     });
     
-    // Evento checkbox IRPF
+    // Eventos checkbox
     els.irpfCheck.addEventListener('change', toggleIrpf);
+    els.ivaCheck.addEventListener('change', toggleIva);
+    els.inversaCheck.addEventListener('change', updatePreview);
+    
+    // Evento cargar JSON
+    els.loadJsonBtn.addEventListener('click', () => els.jsonFileInput.click());
+    els.jsonFileInput.addEventListener('change', (event) => {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result);
+          applyInvoiceData(data);
+        } catch (error) {
+          console.error('JSON inválido', error);
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    });
     
     // Evento botón descargar
-    els.downloadBtn.addEventListener('click', generatePDF);
+    els.downloadBtn.addEventListener('click', () => {
+      generatePDF();
+      downloadJSON();
+    });
     
+    toggleIva();
+    toggleIrpf();
+
     // Preview inicial
     updatePreview();
   }
