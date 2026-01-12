@@ -212,16 +212,6 @@ input[readonly] {
   margin-bottom: 0.25rem;
 }
 
-.invoice-tag {
-  display: none;
-  margin-top: 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--primary);
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-}
-
 .invoice-concept {
   border: 2px solid var(--border);
   padding: 2rem;

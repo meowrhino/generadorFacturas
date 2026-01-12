@@ -33,7 +33,6 @@
     ivaExceptionField: $('ivaExceptionField'),
     irpfCheck: $('irpfCheck'),
     irpfRate: $('irpfRate'),
-    inversaCheck: $('inversaCheck'),
     
     // Preview
     prevEmisorNombre: $('prevEmisorNombre'),
@@ -57,7 +56,6 @@
     prevTotal: $('prevTotal'),
     prevIrpfRow: $('prevIrpfRow'),
     prevIvaException: $('prevIvaException'),
-    prevInversaTag: $('prevInversaTag'),
     
     downloadBtn: $('downloadBtn'),
     loadJsonBtn: $('loadJsonBtn'),
@@ -130,8 +128,7 @@
     
     // Cálculos
     const baseInput = Math.max(0, toNum(els.baseImponible.value));
-    const inversa = els.inversaCheck.checked;
-    const base = inversa ? -baseInput : baseInput;
+    const base = baseInput;
     const ivaEnabled = els.ivaCheck.checked;
     const ivaRateValue = Math.max(0, Math.floor(toNum(els.ivaRate.value))) / 100;
     const ivaRate = ivaEnabled ? ivaRateValue : 0;
@@ -148,7 +145,7 @@
     
     if (irpfEnabled && Math.abs(irpf) > 0) {
       els.prevIrpfRow.style.display = 'grid';
-      els.prevIrpf.textContent = '− ' + fmt.format(Math.abs(irpf));
+      els.prevIrpf.textContent = '- ' + fmt.format(Math.abs(irpf));
     } else {
       els.prevIrpfRow.style.display = 'none';
       els.prevIrpf.textContent = fmt.format(0);
@@ -165,11 +162,6 @@
       els.prevIvaException.textContent = '';
     }
 
-    if (inversa) {
-      els.prevInversaTag.style.display = 'block';
-    } else {
-      els.prevInversaTag.style.display = 'none';
-    }
   }
 
   // Toggle IRPF
@@ -212,7 +204,6 @@
         ivaException: els.ivaException.value || '',
         irpfEnabled: els.irpfCheck.checked,
         irpfRate: toNum(els.irpfRate.value),
-        inversa: els.inversaCheck.checked,
       },
     };
   }
@@ -241,8 +232,6 @@
     if (typeof calculos.ivaException === 'string') els.ivaException.value = calculos.ivaException;
     if (typeof calculos.irpfEnabled !== 'undefined') els.irpfCheck.checked = !!calculos.irpfEnabled;
     if (typeof calculos.irpfRate !== 'undefined') els.irpfRate.value = calculos.irpfRate;
-    if (typeof calculos.inversa !== 'undefined') els.inversaCheck.checked = !!calculos.inversa;
-
     toggleIva();
     toggleIrpf();
     updatePreview();
@@ -288,8 +277,7 @@
     const asunto = els.facturaAsunto.value || '';
     
     const baseInput = Math.max(0, toNum(els.baseImponible.value));
-    const inversa = els.inversaCheck.checked;
-    const base = inversa ? -baseInput : baseInput;
+    const base = baseInput;
     const ivaEnabled = els.ivaCheck.checked;
     const ivaRateValue = Math.max(0, Math.floor(toNum(els.ivaRate.value))) / 100;
     const ivaRate = ivaEnabled ? ivaRateValue : 0;
@@ -310,15 +298,10 @@
 
     doc.setFontSize(16);
     doc.setFont(undefined, 'bold');
-    doc.text('Factura', leftX, y);
+    doc.text(`Factura ${facturaNumValue}/${facturaAnio}`, leftX, y);
     doc.setFontSize(10);
     doc.setFont(undefined, 'normal');
     y += 8;
-
-    if (inversa) {
-      doc.text('Tipo: factura inversa', leftX, y);
-      y += 6;
-    }
 
     doc.setFontSize(11);
     doc.setFont(undefined, 'bold');
@@ -328,15 +311,15 @@
     doc.setFont(undefined, 'normal');
     y += 5;
 
-    doc.text(`Nombre: ${emisorNombre}`, leftX, y);
-    doc.text(`N.º: ${facturaNumValue}/${facturaAnio}`, rightX, y);
+    doc.text(emisorNombre, leftX, y);
+    doc.text(`N.º ${facturaNumValue}/${facturaAnio}`, rightX, y);
     y += 5;
-    doc.text(`Dirección: ${emisorDir1}`, leftX, y);
-    doc.text(`Fecha: ${fechaFormateada}`, rightX, y);
+    doc.text(emisorDir1, leftX, y);
+    doc.text(fechaFormateada, rightX, y);
     y += 5;
-    doc.text(`Dirección 2: ${emisorDir2}`, leftX, y);
+    doc.text(emisorDir2, leftX, y);
     y += 5;
-    doc.text(`N.I.F.: ${emisorNIF}`, leftX, y);
+    doc.text(emisorNIF, leftX, y);
     y += 8;
 
     doc.setFontSize(11);
@@ -345,13 +328,13 @@
     doc.setFontSize(10);
     doc.setFont(undefined, 'normal');
     y += 5;
-    doc.text(`Nombre: ${clienteNombre}`, leftX, y);
+    doc.text(clienteNombre, leftX, y);
     y += 5;
-    doc.text(`Dirección: ${clienteDir1}`, leftX, y);
+    doc.text(clienteDir1, leftX, y);
     y += 5;
-    doc.text(`Dirección 2: ${clienteDir2}`, leftX, y);
+    doc.text(clienteDir2, leftX, y);
     y += 5;
-    doc.text(`N.I.F.: ${clienteNIF}`, leftX, y);
+    doc.text(clienteNIF, leftX, y);
     y += 8;
 
     doc.setFontSize(11);
@@ -370,7 +353,7 @@
       { label: 'Base imponible', value: fmt.format(base) },
     ];
     if (irpfEnabled && Math.abs(irpf) > 0) {
-      totals.push({ label: 'Retención IRPF', value: '− ' + fmt.format(Math.abs(irpf)) });
+      totals.push({ label: 'Retención IRPF', value: '- ' + fmt.format(Math.abs(irpf)) });
     }
     totals.push({ label: ivaEnabled ? 'IVA' : 'IVA (exento)', value: fmt.format(iva) });
     totals.push({ label: 'Total', value: fmt.format(total), bold: true });
@@ -433,8 +416,6 @@
     // Eventos checkbox
     els.irpfCheck.addEventListener('change', toggleIrpf);
     els.ivaCheck.addEventListener('change', toggleIva);
-    els.inversaCheck.addEventListener('change', updatePreview);
-    
     // Evento cargar JSON
     els.loadJsonBtn.addEventListener('click', () => els.jsonFileInput.click());
     els.jsonFileInput.addEventListener('change', (event) => {

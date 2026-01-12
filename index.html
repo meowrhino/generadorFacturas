@@ -4,6 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>generador de facturas</title>
+  <link rel="icon" href="favicon/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon/favicon-16x16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="favicon/apple-touch-icon.png" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -103,12 +107,6 @@
           <div class="field full-width iva-exception-field" id="ivaExceptionField">
             <input id="ivaException" type="text" placeholder="causa excepción iva" aria-label="causa excepción iva" />
           </div>
-          <div class="field full-width">
-            <label class="check-label" for="inversaCheck">
-              <input id="inversaCheck" type="checkbox" />
-              factura inversa
-            </label>
-          </div>
         </div>
       </div>
     </div>
@@ -127,7 +125,6 @@
           <div class="invoice-meta">
             <div><strong>N.º factura:</strong> <span id="prevFacturaNum">—</span></div>
             <div><strong>Fecha:</strong> <span id="prevFacturaFecha">—</span></div>
-            <div class="invoice-tag" id="prevInversaTag">factura inversa</div>
           </div>
         </div>
 
