@@ -1,5 +1,7 @@
 (() => {
-  // Selección de elementos del DOM
+  // ============================================
+  // SELECCIÓN DE ELEMENTOS DEL DOM
+  // ============================================
   const $ = (id) => document.getElementById(id);
 
   const fmt = new Intl.NumberFormat('es-ES', { 
@@ -24,6 +26,7 @@
     facturaNumero: $('facturaNumero'),
     facturaFecha: $('facturaFecha'),
     facturaAsunto: $('facturaAsunto'),
+    instruccionesPago: $('instruccionesPago'),
     
     // Cálculos
     baseImponible: $('baseImponible'),
@@ -48,6 +51,7 @@
     prevFacturaNum: $('prevFacturaNum'),
     prevFacturaFecha: $('prevFacturaFecha'),
     prevFacturaAsunto: $('prevFacturaAsunto'),
+    prevInstruccionesPago: $('prevInstruccionesPago'),
     
     prevSubtotal: $('prevSubtotal'),
     prevIrpf: $('prevIrpf'),
@@ -62,7 +66,10 @@
     jsonFileInput: $('jsonFileInput'),
   };
 
-  // Utilidades
+  // ============================================
+  // UTILIDADES DE FORMATO Y CONVERSIÓN
+  // ============================================
+  
   const toNum = (v) => {
     const n = Number(String(v).replace(',', '.'));
     return Number.isFinite(n) ? n : 0;
@@ -93,17 +100,52 @@
     return parts ? `${parts.d}/${parts.m}/${parts.y}` : '—';
   };
 
-  // Inicializar fecha
+  // ============================================
+  // CÁLCULOS DE FACTURA
+  // ============================================
+  
+  function calculateInvoice() {
+    const baseInput = Math.max(0, toNum(els.baseImponible.value));
+    const base = baseInput;
+    const ivaEnabled = els.ivaCheck.checked;
+    const ivaRateValue = Math.max(0, Math.floor(toNum(els.ivaRate.value))) / 100;
+    const ivaRate = ivaEnabled ? ivaRateValue : 0;
+    const irpfEnabled = els.irpfCheck.checked;
+    const irpfRateValue = Math.max(0, Math.floor(toNum(els.irpfRate.value))) / 100;
+    const irpfRate = irpfEnabled ? irpfRateValue : 0;
+    
+    const iva = round2(base * ivaRate);
+    const irpf = round2(base * irpfRate);
+    const total = round2(base + iva - irpf);
+    
+    return {
+      base,
+      iva,
+      irpf,
+      total,
+      ivaEnabled,
+      irpfEnabled,
+      ivaRate: ivaRateValue,
+      irpfRate: irpfRateValue
+    };
+  }
+
+  // ============================================
+  // INICIALIZACIÓN
+  // ============================================
+  
   function initDateFields() {
     const today = new Date();
-    // Establecer fecha actual
     const yyyy = today.getFullYear();
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const dd = String(today.getDate()).padStart(2, '0');
     els.facturaFecha.value = `${yyyy}-${mm}-${dd}`;
   }
 
-  // Actualizar previsualización
+  // ============================================
+  // PREVISUALIZACIÓN
+  // ============================================
+  
   function updatePreview() {
     // Emisor
     els.prevEmisorNombre.textContent = els.emisorNombre.value || '—';
@@ -126,45 +168,50 @@
     
     els.prevFacturaAsunto.textContent = els.facturaAsunto.value || '—';
     
+    // Instrucciones de pago
+    const instruccionesPagoText = els.instruccionesPago.value.trim();
+    if (instruccionesPagoText) {
+      els.prevInstruccionesPago.style.display = 'block';
+      els.prevInstruccionesPago.innerHTML = `<strong>Instrucciones de pago:</strong><br>${instruccionesPagoText}`;
+    } else {
+      els.prevInstruccionesPago.style.display = 'none';
+      els.prevInstruccionesPago.innerHTML = '';
+    }
+    
     // Cálculos
-    const baseInput = Math.max(0, toNum(els.baseImponible.value));
-    const base = baseInput;
-    const ivaEnabled = els.ivaCheck.checked;
-    const ivaRateValue = Math.max(0, Math.floor(toNum(els.ivaRate.value))) / 100;
-    const ivaRate = ivaEnabled ? ivaRateValue : 0;
-    const irpfEnabled = els.irpfCheck.checked;
-    const irpfRate = irpfEnabled ? Math.max(0, Math.floor(toNum(els.irpfRate.value))) / 100 : 0;
+    const calc = calculateInvoice();
     
-    const iva = round2(base * ivaRate);
-    const irpf = round2(base * irpfRate);
-    const total = round2(base + iva - irpf);
+    els.prevSubtotal.textContent = fmt.format(calc.base);
+    els.prevIva.textContent = fmt.format(calc.iva);
+    els.prevTotal.textContent = fmt.format(calc.total);
     
-    els.prevSubtotal.textContent = fmt.format(base);
-    els.prevIva.textContent = fmt.format(iva);
-    els.prevTotal.textContent = fmt.format(total);
-    
-    if (irpfEnabled && Math.abs(irpf) > 0) {
+    // IRPF
+    if (calc.irpfEnabled && Math.abs(calc.irpf) > 0) {
       els.prevIrpfRow.style.display = 'grid';
-      els.prevIrpf.textContent = '- ' + fmt.format(Math.abs(irpf));
+      els.prevIrpf.textContent = '- ' + fmt.format(Math.abs(calc.irpf));
     } else {
       els.prevIrpfRow.style.display = 'none';
       els.prevIrpf.textContent = fmt.format(0);
     }
 
-    els.prevIvaLabel.textContent = ivaEnabled ? 'I.V.A.' : 'I.V.A. (exento)';
+    // IVA label
+    els.prevIvaLabel.textContent = calc.ivaEnabled ? 'I.V.A.' : 'I.V.A. (exento)';
 
+    // Excepción IVA
     const ivaExceptionText = els.ivaException.value.trim();
-    if (!ivaEnabled && ivaExceptionText) {
+    if (!calc.ivaEnabled && ivaExceptionText) {
       els.prevIvaException.style.display = 'block';
       els.prevIvaException.textContent = ivaExceptionText;
     } else {
       els.prevIvaException.style.display = 'none';
       els.prevIvaException.textContent = '';
     }
-
   }
 
-  // Toggle IRPF
+  // ============================================
+  // TOGGLES DE CHECKBOXES
+  // ============================================
+  
   function toggleIrpf() {
     els.irpfRate.disabled = !els.irpfCheck.checked;
     updatePreview();
@@ -177,6 +224,10 @@
     updatePreview();
   }
 
+  // ============================================
+  // GESTIÓN DE DATOS (JSON)
+  // ============================================
+  
   function buildInvoiceData() {
     return {
       version: 1,
@@ -196,6 +247,7 @@
         numero: els.facturaNumero.value || '',
         fecha: els.facturaFecha.value || '',
         asunto: els.facturaAsunto.value || '',
+        instruccionesPago: els.instruccionesPago.value || '',
       },
       calculos: {
         base: toNum(els.baseImponible.value),
@@ -212,26 +264,32 @@
     if (!data || typeof data !== 'object') return;
     const { emisor = {}, cliente = {}, factura = {}, calculos = {} } = data;
 
+    // Emisor
     if (typeof emisor.nombre === 'string') els.emisorNombre.value = emisor.nombre;
     if (typeof emisor.direccion1 === 'string') els.emisorDireccion1.value = emisor.direccion1;
     if (typeof emisor.direccion2 === 'string') els.emisorDireccion2.value = emisor.direccion2;
     if (typeof emisor.nif === 'string') els.emisorNIF.value = emisor.nif;
 
+    // Cliente
     if (typeof cliente.nombre === 'string') els.clienteNombre.value = cliente.nombre;
     if (typeof cliente.direccion1 === 'string') els.clienteDireccion1.value = cliente.direccion1;
     if (typeof cliente.direccion2 === 'string') els.clienteDireccion2.value = cliente.direccion2;
     if (typeof cliente.nif === 'string') els.clienteNIF.value = cliente.nif;
 
+    // Factura
     if (typeof factura.numero !== 'undefined') els.facturaNumero.value = factura.numero;
     if (typeof factura.fecha === 'string') els.facturaFecha.value = factura.fecha;
     if (typeof factura.asunto === 'string') els.facturaAsunto.value = factura.asunto;
+    if (typeof factura.instruccionesPago === 'string') els.instruccionesPago.value = factura.instruccionesPago;
 
+    // Cálculos
     if (typeof calculos.base !== 'undefined') els.baseImponible.value = calculos.base;
     if (typeof calculos.ivaRate !== 'undefined') els.ivaRate.value = calculos.ivaRate;
     if (typeof calculos.ivaEnabled !== 'undefined') els.ivaCheck.checked = !!calculos.ivaEnabled;
     if (typeof calculos.ivaException === 'string') els.ivaException.value = calculos.ivaException;
     if (typeof calculos.irpfEnabled !== 'undefined') els.irpfCheck.checked = !!calculos.irpfEnabled;
     if (typeof calculos.irpfRate !== 'undefined') els.irpfRate.value = calculos.irpfRate;
+    
     toggleIva();
     toggleIrpf();
     updatePreview();
@@ -252,12 +310,15 @@
     URL.revokeObjectURL(link.href);
   }
 
-  // Generar PDF
+  // ============================================
+  // GENERACIÓN DE PDF
+  // ============================================
+  
   function generatePDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     
-    // Datos
+    // Recopilar datos
     const emisorNombre = els.emisorNombre.value || '';
     const emisorDir1 = els.emisorDireccion1.value || '';
     const emisorDir2 = els.emisorDireccion2.value || '';
@@ -275,20 +336,13 @@
     const facturaAnioFile = getYearShortForFile(fechaValue);
     const fechaFormateada = formatDate(fechaValue);
     const asunto = els.facturaAsunto.value || '';
+    const instruccionesPago = els.instruccionesPago.value.trim();
     
-    const baseInput = Math.max(0, toNum(els.baseImponible.value));
-    const base = baseInput;
-    const ivaEnabled = els.ivaCheck.checked;
-    const ivaRateValue = Math.max(0, Math.floor(toNum(els.ivaRate.value))) / 100;
-    const ivaRate = ivaEnabled ? ivaRateValue : 0;
-    const irpfEnabled = els.irpfCheck.checked;
-    const irpfRate = irpfEnabled ? Math.max(0, Math.floor(toNum(els.irpfRate.value))) / 100 : 0;
-    
-    const iva = round2(base * ivaRate);
-    const irpf = round2(base * irpfRate);
-    const total = round2(base + iva - irpf);
+    // Cálculos
+    const calc = calculateInvoice();
     const ivaExceptionText = els.ivaException.value.trim();
     
+    // Configuración de página
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 20;
@@ -296,6 +350,7 @@
     const rightX = pageWidth / 2 + 5;
     let y = margin;
 
+    // Título de factura
     doc.setFontSize(16);
     doc.setFont(undefined, 'bold');
     doc.text(`Factura ${facturaNumValue}/${facturaAnio}`, leftX, y);
@@ -303,6 +358,7 @@
     doc.setFont(undefined, 'normal');
     y += 8;
 
+    // Sección emisor y datos de factura
     doc.setFontSize(11);
     doc.setFont(undefined, 'bold');
     doc.text('Emisor', leftX, y);
@@ -320,8 +376,9 @@
     doc.text(emisorDir2, leftX, y);
     y += 5;
     doc.text(emisorNIF, leftX, y);
-    y += 8;
+    y += 10;
 
+    // Sección cliente
     doc.setFontSize(11);
     doc.setFont(undefined, 'bold');
     doc.text('Cliente', leftX, y);
@@ -335,8 +392,9 @@
     doc.text(clienteDir2, leftX, y);
     y += 5;
     doc.text(clienteNIF, leftX, y);
-    y += 8;
+    y += 10;
 
+    // Concepto
     doc.setFontSize(11);
     doc.setFont(undefined, 'bold');
     doc.text('Concepto', leftX, y);
@@ -347,24 +405,33 @@
     const concepto = asunto || '—';
     const conceptoLines = doc.splitTextToSize(concepto, pageWidth - margin * 2);
     doc.text(conceptoLines, leftX, y);
-    y += conceptoLines.length * 5 + 6;
+    y += conceptoLines.length * 5 + 8;
 
+    // Preparar totales
     const totals = [
-      { label: 'Base imponible', value: fmt.format(base) },
+      { label: 'Base imponible', value: fmt.format(calc.base) },
     ];
-    if (irpfEnabled && Math.abs(irpf) > 0) {
-      totals.push({ label: 'Retención IRPF', value: '- ' + fmt.format(Math.abs(irpf)) });
+    if (calc.irpfEnabled && Math.abs(calc.irpf) > 0) {
+      totals.push({ label: 'Retención IRPF', value: '- ' + fmt.format(Math.abs(calc.irpf)) });
     }
-    totals.push({ label: ivaEnabled ? 'IVA' : 'IVA (exento)', value: fmt.format(iva) });
-    totals.push({ label: 'Total', value: fmt.format(total), bold: true });
+    totals.push({ label: calc.ivaEnabled ? 'IVA' : 'IVA (exento)', value: fmt.format(calc.iva) });
+    totals.push({ label: 'TOTAL', value: fmt.format(calc.total), bold: true });
 
-    const noteLines = (!ivaEnabled && ivaExceptionText)
+    // Calcular espacio necesario para totales e instrucciones
+    const noteLines = (!calc.ivaEnabled && ivaExceptionText)
       ? doc.splitTextToSize(ivaExceptionText, 70)
       : [];
     const noteHeight = noteLines.length ? noteLines.length * 4 + 2 : 0;
+    
+    const instruccionesLines = instruccionesPago
+      ? doc.splitTextToSize(instruccionesPago, 70)
+      : [];
+    const instruccionesHeight = instruccionesLines.length ? instruccionesLines.length * 4 + 8 : 0;
+    
     const lineHeight = 6;
     const totalsHeight = totals.length * lineHeight;
-    let totalsY = pageHeight - margin - totalsHeight - noteHeight;
+    let totalsY = pageHeight - margin - totalsHeight - noteHeight - instruccionesHeight;
+    
     if (totalsY < y + 4) {
       totalsY = y + 4;
     }
@@ -372,6 +439,7 @@
     const labelX = pageWidth - margin - 70;
     const valueX = pageWidth - margin;
 
+    // Excepción IVA (si existe)
     if (noteLines.length) {
       doc.setFontSize(8);
       doc.setFont(undefined, 'normal');
@@ -379,6 +447,7 @@
       totalsY += noteLines.length * 4 + 2;
     }
 
+    // Dibujar totales
     totals.forEach((row) => {
       if (row.bold) {
         doc.setFontSize(12);
@@ -392,11 +461,26 @@
       totalsY += lineHeight;
     });
     
-    // Descargar
+    // Instrucciones de pago (si existen)
+    if (instruccionesLines.length) {
+      totalsY += 4;
+      doc.setFontSize(9);
+      doc.setFont(undefined, 'bold');
+      doc.text('Instrucciones de pago:', labelX, totalsY);
+      totalsY += 4;
+      doc.setFontSize(8);
+      doc.setFont(undefined, 'normal');
+      doc.text(instruccionesLines, labelX, totalsY);
+    }
+    
+    // Descargar PDF
     doc.save(`factura_${facturaNumFile}_${facturaAnioFile}.pdf`);
   }
 
-  // Inicializar eventos
+  // ============================================
+  // EVENTOS Y INICIALIZACIÓN
+  // ============================================
+  
   function init() {
     initDateFields();
     
@@ -404,7 +488,7 @@
     const allInputs = [
       els.emisorNombre, els.emisorDireccion1, els.emisorDireccion2, els.emisorNIF,
       els.clienteNombre, els.clienteDireccion1, els.clienteDireccion2, els.clienteNIF,
-      els.facturaNumero, els.facturaFecha, els.facturaAsunto,
+      els.facturaNumero, els.facturaFecha, els.facturaAsunto, els.instruccionesPago,
       els.baseImponible, els.ivaRate, els.ivaException, els.irpfRate,
     ];
     
@@ -416,6 +500,7 @@
     // Eventos checkbox
     els.irpfCheck.addEventListener('change', toggleIrpf);
     els.ivaCheck.addEventListener('change', toggleIva);
+    
     // Evento cargar JSON
     els.loadJsonBtn.addEventListener('click', () => els.jsonFileInput.click());
     els.jsonFileInput.addEventListener('change', (event) => {

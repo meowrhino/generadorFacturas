@@ -122,3 +122,193 @@ Se utilizó la librería jsPDF (desde CDN) para generar el PDF:
 2. Probar la generación de PDF en diferentes navegadores
 3. Validar el responsive en dispositivos móviles
 4. Considerar añadir más opciones de personalización (logo, colores, etc.)
+
+
+---
+
+## 2026-01-14 10:50:49
+
+### Mejoras de diseño y funcionalidad: Instrucciones de pago
+
+**Sinopsis:** Implementación de mejoras visuales para que la factura se vea más profesional y "legit", y adición de un nuevo campo "instrucciones de pago" para facilitar el cobro.
+
+**Contexto:**
+
+El generador de facturas funcionaba correctamente, pero se identificaron oportunidades de mejora tanto en el diseño visual como en la funcionalidad. El objetivo era crear un generador de facturas universal, limpio y opensource que cualquiera pudiera usar sin necesidad de personalizarlo, manteniendo la sencillez pero mejorando la profesionalidad.
+
+**Investigación previa:**
+
+Se realizó una investigación sobre mejores prácticas de diseño de facturas minimalistas, enfocándose en:
+- Espaciado y jerarquía visual
+- Ubicación de información crítica (número de factura, total, instrucciones de pago)
+- Uso de bordes y líneas divisorias
+- Tipografía y legibilidad
+
+Los hallazgos indicaron que las facturas profesionales se caracterizan por:
+- Mucho espacio en blanco para facilitar la lectura
+- Bordes sutiles (1px) en lugar de bordes gruesos (2px)
+- Información de pago ubicada después de los totales
+- Jerarquía clara con el TOTAL como elemento más prominente
+
+**Cambios implementados:**
+
+#### 1. Mejoras de diseño visual (CSS)
+
+**Espaciado mejorado:**
+- Aumentado el padding de `.invoice-preview` de 2rem a 2.5rem
+- Aumentado el `margin-bottom` de `.invoice-block` de 1.5rem a 2rem
+- Aumentado el espacio entre concepto y totales de 1.5rem a 2.5rem
+- Mejorado el `line-height` de 1.5 a 1.6 en `.invoice-preview`
+
+**Bordes más sutiles:**
+- Reducido el borde de `.invoice-preview` de 2px a 1px
+- Reducido el borde de `.invoice-block` de 2px a 1px
+- Reducido el borde de `.invoice-concept` de 2px a 1px
+- Reducido el borde de `.invoice-header-section` de 2px a 1px
+- Mantenido el borde del `.total-row` en 2px para destacarlo
+
+**Concepto más limpio:**
+- Reducido el padding de `.invoice-concept` de 2rem a 1.5rem
+- Reducido el `min-height` de 120px a 100px
+
+**Total más prominente:**
+- Aumentado el tamaño de fuente del `.total-row` de 1rem a 1.1rem
+- Aumentado el padding del `.total-row` de 0.35rem a 0.5rem
+
+**Nuevo elemento: Instrucciones de pago:**
+- Creado `.invoice-payment-instructions` con:
+  - Fondo gris claro (`#f9fafb`)
+  - Borde sutil de 1px
+  - Border radius de 6px
+  - Padding de 1rem
+  - Fuente de 0.88rem
+  - Oculto por defecto, se muestra solo si hay contenido
+
+#### 2. Nueva funcionalidad: Campo "Instrucciones de pago"
+
+**En el formulario (HTML):**
+- Añadido nuevo input `instruccionesPago` en el bloque "factura"
+- Ubicado después del campo "asunto / concepto"
+- Placeholder: "instrucciones de pago (opcional)"
+- Campo opcional para no forzar su uso
+
+**En la previsualización (HTML):**
+- Añadido nuevo elemento `prevInstruccionesPago`
+- Ubicado después de los totales y antes de las notas de IVA
+- Se muestra solo si el usuario ha introducido texto
+
+**En el JavaScript:**
+- Añadido `instruccionesPago` al objeto `els` para acceso al DOM
+- Añadido `prevInstruccionesPago` al objeto `els` para previsualización
+- Actualizada función `updatePreview()` para mostrar/ocultar instrucciones
+- Actualizada función `buildInvoiceData()` para incluir `instruccionesPago` en el JSON
+- Actualizada función `applyInvoiceData()` para cargar `instruccionesPago` desde JSON
+- Actualizada función `generatePDF()` para incluir instrucciones en el PDF
+
+**Lógica de visualización:**
+```javascript
+const instruccionesPagoText = els.instruccionesPago.value.trim();
+if (instruccionesPagoText) {
+  els.prevInstruccionesPago.style.display = 'block';
+  els.prevInstruccionesPago.innerHTML = `<strong>Instrucciones de pago:</strong><br>${instruccionesPagoText}`;
+} else {
+  els.prevInstruccionesPago.style.display = 'none';
+  els.prevInstruccionesPago.innerHTML = '';
+}
+```
+
+**En el PDF:**
+- Las instrucciones se renderizan después de los totales
+- Se usa `doc.splitTextToSize()` para ajustar el texto al ancho disponible
+- Se calcula dinámicamente el espacio necesario para evitar solapamientos
+- Formato: título en negrita (9pt) + contenido (8pt)
+
+#### 3. Refactorización del código JavaScript
+
+**Estructura modular mejorada:**
+
+Se reorganizó el código en secciones claramente delimitadas con comentarios:
+
+```javascript
+// SELECCIÓN DE ELEMENTOS DEL DOM
+// UTILIDADES DE FORMATO Y CONVERSIÓN
+// CÁLCULOS DE FACTURA
+// INICIALIZACIÓN
+// PREVISUALIZACIÓN
+// TOGGLES DE CHECKBOXES
+// GESTIÓN DE DATOS (JSON)
+// GENERACIÓN DE PDF
+// EVENTOS Y INICIALIZACIÓN
+```
+
+**Nueva función: `calculateInvoice()`**
+
+Se extrajo la lógica de cálculo en una función independiente que retorna un objeto con todos los valores calculados:
+
+```javascript
+function calculateInvoice() {
+  // ... cálculos ...
+  return {
+    base,
+    iva,
+    irpf,
+    total,
+    ivaEnabled,
+    irpfEnabled,
+    ivaRate: ivaRateValue,
+    irpfRate: irpfRateValue
+  };
+}
+```
+
+Esto permite reutilizar los cálculos tanto en la previsualización como en la generación del PDF, evitando duplicación de código.
+
+**Mejoras en legibilidad:**
+- Comentarios más descriptivos en cada sección
+- Nombres de variables más claros
+- Separación visual con líneas de comentarios
+- Código más espaciado y organizado
+
+#### 4. Compatibilidad con JSON
+
+El nuevo campo `instruccionesPago` se integra completamente con el sistema de carga/guardado de JSON:
+
+**Estructura del JSON actualizada:**
+```json
+{
+  "version": 1,
+  "factura": {
+    "numero": "1",
+    "fecha": "2026-01-14",
+    "asunto": "Servicios de diseño web",
+    "instruccionesPago": "Transferencia bancaria: ES12 3456..."
+  }
+}
+```
+
+**Beneficios:**
+- Los usuarios pueden guardar plantillas con sus instrucciones de pago
+- Facilita la reutilización de datos entre facturas
+- Mantiene la retrocompatibilidad con JSONs antiguos (el campo es opcional)
+
+**Impacto en archivos:**
+
+- **index.html**: +4 líneas (nuevo input + nuevo elemento de preview)
+- **styles.css**: ~40 líneas modificadas/añadidas (mejoras visuales + estilos de instrucciones)
+- **script.js**: ~60 líneas modificadas/añadidas (refactorización + nueva funcionalidad)
+
+**Resultado final:**
+
+El generador de facturas ahora:
+1. Se ve más profesional y "legit" con espaciados mejorados y bordes sutiles
+2. Permite añadir instrucciones de pago que aparecen tanto en la previsualización como en el PDF
+3. Tiene un código más limpio, modular y fácil de mantener
+4. Mantiene la simplicidad y el fondo blanco original
+5. Es completamente funcional para uso universal sin necesidad de personalización
+
+**Próximos pasos sugeridos:**
+
+1. Considerar añadir un campo de "fecha de vencimiento" opcional
+2. Permitir múltiples líneas de concepto con cantidades y precios unitarios
+3. Añadir soporte para múltiples idiomas
+4. Implementar temas de color opcionales manteniendo el blanco como predeterminado
