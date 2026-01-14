@@ -312,3 +312,174 @@ El generador de facturas ahora:
 2. Permitir múltiples líneas de concepto con cantidades y precios unitarios
 3. Añadir soporte para múltiples idiomas
 4. Implementar temas de color opcionales manteniendo el blanco como predeterminado
+
+
+---
+
+## 2026-01-14 11:03:51
+
+### Mejora UX: Dos campos separados para instrucciones de pago
+
+**Sinopsis:** División del campo único de instrucciones de pago en dos campos independientes para mejorar la presentación y evitar saltos de línea no deseados en números largos como IBANs.
+
+**Contexto:**
+
+Tras la implementación del campo de instrucciones de pago, se identificó que al introducir información como "transferencia bancaria" seguido de un IBAN largo (ej: ES13 2100 0287 3301 0236 1086), el formato podía verse afectado por saltos de línea automáticos, especialmente en el PDF generado. Para mejorar la experiencia de usuario y el control sobre el formato, se decidió dividir el campo en dos inputs separados.
+
+**Problema identificado:**
+
+- Un solo campo de texto largo puede generar saltos de línea no deseados
+- Los IBANs y números de cuenta largos pueden partirse visualmente
+- Falta de control sobre la estructura de la información de pago
+
+**Solución implementada:**
+
+#### 1. HTML - Dos campos independientes
+
+Se reemplazó el campo único `instruccionesPago` por dos campos:
+
+```html
+<div class="field full-width">
+  <input id="instruccionesPago1" type="text" 
+         placeholder="instrucciones de pago 1 (ej: transferencia bancaria)" />
+</div>
+<div class="field full-width">
+  <input id="instruccionesPago2" type="text" 
+         placeholder="instrucciones de pago 2 (ej: ES13 2100 0287 3301 0236 1086)" />
+</div>
+```
+
+**Ventajas:**
+- El usuario puede separar el título del contenido
+- Cada línea se renderiza independientemente
+- Mayor control sobre el formato final
+- Los placeholders guían al usuario sobre cómo usar cada campo
+
+#### 2. JavaScript - Lógica actualizada
+
+**Actualización del objeto `els`:**
+```javascript
+instruccionesPago1: $('instruccionesPago1'),
+instruccionesPago2: $('instruccionesPago2'),
+```
+
+**Actualización de `updatePreview()`:**
+```javascript
+const instruccionesPago1Text = els.instruccionesPago1.value.trim();
+const instruccionesPago2Text = els.instruccionesPago2.value.trim();
+
+if (instruccionesPago1Text || instruccionesPago2Text) {
+  els.prevInstruccionesPago.style.display = 'block';
+  let htmlContent = '<strong>Instrucciones de pago:</strong><br>';
+  if (instruccionesPago1Text) htmlContent += instruccionesPago1Text + '<br>';
+  if (instruccionesPago2Text) htmlContent += instruccionesPago2Text;
+  els.prevInstruccionesPago.innerHTML = htmlContent;
+} else {
+  els.prevInstruccionesPago.style.display = 'none';
+}
+```
+
+**Lógica de visualización:**
+- Si solo hay contenido en campo 1: se muestra solo esa línea
+- Si solo hay contenido en campo 2: se muestra solo esa línea
+- Si hay contenido en ambos: se muestran ambas líneas con salto de línea entre ellas
+- Si ambos están vacíos: no se muestra la sección
+
+**Actualización de `buildInvoiceData()` y `applyInvoiceData()`:**
+```javascript
+factura: {
+  // ...
+  instruccionesPago1: els.instruccionesPago1.value || '',
+  instruccionesPago2: els.instruccionesPago2.value || '',
+}
+```
+
+**Retrocompatibilidad con JSONs antiguos:**
+```javascript
+if (typeof factura.instruccionesPago1 === 'string') 
+  els.instruccionesPago1.value = factura.instruccionesPago1;
+if (typeof factura.instruccionesPago2 === 'string') 
+  els.instruccionesPago2.value = factura.instruccionesPago2;
+
+// Retrocompatibilidad con versión anterior (un solo campo)
+if (typeof factura.instruccionesPago === 'string' && !factura.instruccionesPago1) {
+  els.instruccionesPago1.value = factura.instruccionesPago;
+}
+```
+
+Esto asegura que los JSONs creados con la versión anterior (un solo campo) se carguen correctamente en el primer campo de la nueva versión.
+
+**Actualización de `generatePDF()`:**
+```javascript
+const instruccionesPago1 = els.instruccionesPago1.value.trim();
+const instruccionesPago2 = els.instruccionesPago2.value.trim();
+
+let instruccionesText = '';
+if (instruccionesPago1) instruccionesText += instruccionesPago1;
+if (instruccionesPago1 && instruccionesPago2) instruccionesText += '\n';
+if (instruccionesPago2) instruccionesText += instruccionesPago2;
+
+const instruccionesLines = instruccionesText
+  ? doc.splitTextToSize(instruccionesText, 70)
+  : [];
+```
+
+El PDF ahora renderiza correctamente las dos líneas con un salto de línea explícito entre ellas.
+
+#### 3. Estructura del JSON actualizada
+
+**Nueva estructura:**
+```json
+{
+  "version": 1,
+  "factura": {
+    "numero": "1",
+    "fecha": "2026-01-14",
+    "asunto": "Servicios de diseño web",
+    "instruccionesPago1": "Transferencia bancaria",
+    "instruccionesPago2": "ES13 2100 0287 3301 0236 1086"
+  }
+}
+```
+
+**Estructura antigua (sigue siendo compatible):**
+```json
+{
+  "version": 1,
+  "factura": {
+    "instruccionesPago": "Transferencia bancaria: ES13 2100 0287 3301 0236 1086"
+  }
+}
+```
+
+#### 4. Casos de uso
+
+**Ejemplo 1: Transferencia bancaria**
+- Campo 1: "Transferencia bancaria"
+- Campo 2: "ES13 2100 0287 3301 0236 1086"
+
+**Ejemplo 2: Múltiples métodos de pago**
+- Campo 1: "Bizum: 612 34 56 78"
+- Campo 2: "PayPal: usuario@email.com"
+
+**Ejemplo 3: Solo un método**
+- Campo 1: "Pago en efectivo"
+- Campo 2: (vacío)
+
+**Ejemplo 4: Información adicional**
+- Campo 1: "Transferencia bancaria (plazo: 15 días)"
+- Campo 2: "IBAN: ES13 2100 0287 3301 0236 1086 - BIC: CAIXESBBXXX"
+
+**Resultado final:**
+
+- ✅ Control total sobre el formato de las instrucciones de pago
+- ✅ IBANs y números largos se mantienen en una sola línea
+- ✅ Retrocompatibilidad con JSONs de la versión anterior
+- ✅ Flexibilidad para diferentes casos de uso
+- ✅ Placeholders informativos que guían al usuario
+- ✅ Código limpio y mantenible
+
+**Archivos modificados:**
+- `index.html`: Reemplazo de 1 campo por 2 campos (+3 líneas)
+- `script.js`: Actualización de lógica para manejar 2 campos (~15 líneas modificadas)
+- `manus/proceso.md`: Documentación del cambio

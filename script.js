@@ -26,7 +26,8 @@
     facturaNumero: $('facturaNumero'),
     facturaFecha: $('facturaFecha'),
     facturaAsunto: $('facturaAsunto'),
-    instruccionesPago: $('instruccionesPago'),
+    instruccionesPago1: $('instruccionesPago1'),
+    instruccionesPago2: $('instruccionesPago2'),
     
     // Cálculos
     baseImponible: $('baseImponible'),
@@ -169,10 +170,15 @@
     els.prevFacturaAsunto.textContent = els.facturaAsunto.value || '—';
     
     // Instrucciones de pago
-    const instruccionesPagoText = els.instruccionesPago.value.trim();
-    if (instruccionesPagoText) {
+    const instruccionesPago1Text = els.instruccionesPago1.value.trim();
+    const instruccionesPago2Text = els.instruccionesPago2.value.trim();
+    
+    if (instruccionesPago1Text || instruccionesPago2Text) {
       els.prevInstruccionesPago.style.display = 'block';
-      els.prevInstruccionesPago.innerHTML = `<strong>Instrucciones de pago:</strong><br>${instruccionesPagoText}`;
+      let htmlContent = '<strong>Instrucciones de pago:</strong><br>';
+      if (instruccionesPago1Text) htmlContent += instruccionesPago1Text + '<br>';
+      if (instruccionesPago2Text) htmlContent += instruccionesPago2Text;
+      els.prevInstruccionesPago.innerHTML = htmlContent;
     } else {
       els.prevInstruccionesPago.style.display = 'none';
       els.prevInstruccionesPago.innerHTML = '';
@@ -247,7 +253,8 @@
         numero: els.facturaNumero.value || '',
         fecha: els.facturaFecha.value || '',
         asunto: els.facturaAsunto.value || '',
-        instruccionesPago: els.instruccionesPago.value || '',
+        instruccionesPago1: els.instruccionesPago1.value || '',
+        instruccionesPago2: els.instruccionesPago2.value || '',
       },
       calculos: {
         base: toNum(els.baseImponible.value),
@@ -280,7 +287,12 @@
     if (typeof factura.numero !== 'undefined') els.facturaNumero.value = factura.numero;
     if (typeof factura.fecha === 'string') els.facturaFecha.value = factura.fecha;
     if (typeof factura.asunto === 'string') els.facturaAsunto.value = factura.asunto;
-    if (typeof factura.instruccionesPago === 'string') els.instruccionesPago.value = factura.instruccionesPago;
+    if (typeof factura.instruccionesPago1 === 'string') els.instruccionesPago1.value = factura.instruccionesPago1;
+    if (typeof factura.instruccionesPago2 === 'string') els.instruccionesPago2.value = factura.instruccionesPago2;
+    // Retrocompatibilidad con versión anterior (un solo campo)
+    if (typeof factura.instruccionesPago === 'string' && !factura.instruccionesPago1) {
+      els.instruccionesPago1.value = factura.instruccionesPago;
+    }
 
     // Cálculos
     if (typeof calculos.base !== 'undefined') els.baseImponible.value = calculos.base;
@@ -336,7 +348,8 @@
     const facturaAnioFile = getYearShortForFile(fechaValue);
     const fechaFormateada = formatDate(fechaValue);
     const asunto = els.facturaAsunto.value || '';
-    const instruccionesPago = els.instruccionesPago.value.trim();
+    const instruccionesPago1 = els.instruccionesPago1.value.trim();
+    const instruccionesPago2 = els.instruccionesPago2.value.trim();
     
     // Cálculos
     const calc = calculateInvoice();
@@ -423,8 +436,13 @@
       : [];
     const noteHeight = noteLines.length ? noteLines.length * 4 + 2 : 0;
     
-    const instruccionesLines = instruccionesPago
-      ? doc.splitTextToSize(instruccionesPago, 70)
+    let instruccionesText = '';
+    if (instruccionesPago1) instruccionesText += instruccionesPago1;
+    if (instruccionesPago1 && instruccionesPago2) instruccionesText += '\n';
+    if (instruccionesPago2) instruccionesText += instruccionesPago2;
+    
+    const instruccionesLines = instruccionesText
+      ? doc.splitTextToSize(instruccionesText, 70)
       : [];
     const instruccionesHeight = instruccionesLines.length ? instruccionesLines.length * 4 + 8 : 0;
     
@@ -488,7 +506,8 @@
     const allInputs = [
       els.emisorNombre, els.emisorDireccion1, els.emisorDireccion2, els.emisorNIF,
       els.clienteNombre, els.clienteDireccion1, els.clienteDireccion2, els.clienteNIF,
-      els.facturaNumero, els.facturaFecha, els.facturaAsunto, els.instruccionesPago,
+      els.facturaNumero, els.facturaFecha, els.facturaAsunto, 
+      els.instruccionesPago1, els.instruccionesPago2,
       els.baseImponible, els.ivaRate, els.ivaException, els.irpfRate,
     ];
     
