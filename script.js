@@ -67,10 +67,32 @@
     jsonFileInput: $('jsonFileInput'),
   };
 
-  // ============================================
-  // UTILIDADES DE FORMATO Y CONVERSIÓN
-  // ============================================
-  
+  // Notificaciones
+  function showNotification(message, type = 'info') {
+    const el = document.createElement('div');
+    el.className = `notification notification-${type}`;
+    el.textContent = message;
+    document.body.appendChild(el);
+
+    const all = document.querySelectorAll('.notification');
+    for (let i = all.length - 1; i >= 0; i--) {
+      all[i].style.bottom = `${1.5 + (all.length - 1 - i) * 3.5}rem`;
+    }
+
+    setTimeout(() => el.classList.add('show'), 10);
+    setTimeout(() => {
+      el.classList.remove('show');
+      setTimeout(() => {
+        el.remove();
+        const remaining = document.querySelectorAll('.notification');
+        remaining.forEach((n, i) => {
+          n.style.bottom = `${1.5 + (remaining.length - 1 - i) * 3.5}rem`;
+        });
+      }, 300);
+    }, 3000);
+  }
+
+  // Utilidades
   const toNum = (v) => {
     const n = Number(String(v).replace(',', '.'));
     return Number.isFinite(n) ? n : 0;
@@ -530,8 +552,8 @@
         try {
           const data = JSON.parse(reader.result);
           applyInvoiceData(data);
-        } catch (error) {
-          console.error('JSON inválido', error);
+        } catch {
+          showNotification('el archivo JSON no es válido', 'error');
         }
       };
       reader.readAsText(file);
@@ -547,9 +569,53 @@
     toggleIva();
     toggleIrpf();
 
+    // Cargar datos guardados
+    loadFromStorage();
+
     // Preview inicial
     updatePreview();
+
+    // Autosave en cada cambio
+    allInputs.forEach(input => {
+      input.addEventListener('input', saveToStorage);
+      input.addEventListener('change', saveToStorage);
+    });
+    els.irpfCheck.addEventListener('change', saveToStorage);
+    els.ivaCheck.addEventListener('change', saveToStorage);
   }
+
+  // LocalStorage
+  const STORAGE_KEY = 'generadorFacturas_data';
+
+  function saveToStorage() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(buildInvoiceData()));
+    } catch { /* quota exceeded, ignore */ }
+  }
+
+  function loadFromStorage() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      applyInvoiceData(data);
+    } catch { /* corrupted data, ignore */ }
+  }
+
+  // Pegar JSON desde clipboard (Ctrl+V / Cmd+V)
+  document.addEventListener('paste', (e) => {
+    const text = e.clipboardData?.getData('text/plain');
+    if (!text) return;
+    try {
+      const data = JSON.parse(text);
+      if (data && typeof data === 'object' && (data.emisor || data.cliente || data.factura || data.calculos)) {
+        e.preventDefault();
+        applyInvoiceData(data);
+        saveToStorage();
+        showNotification('datos cargados desde el portapapeles', 'success');
+      }
+    } catch { /* not JSON, ignore */ }
+  });
 
   init();
 })();
